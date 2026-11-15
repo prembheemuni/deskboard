@@ -13,19 +13,67 @@ It has two parts: a **frontend** (React, in your browser) and a small **backend*
 writes the vault folder. Both run on your machine. The server only listens on `127.0.0.1` and only answers
 pages served from this computer, so your notes never leave your machine.
 
-## Using it
+## Install
 
-Needs Node 20+, Python 3.12+ and [uv](https://docs.astral.sh/uv/) (`pip install uv`).
+You only do this once. The commands are for PowerShell on Windows; run them from the project folder.
 
-```bash
-npm run setup                      # installs frontend and backend packages
-copy backend\.env.example backend\.env   # then set DESKBOARD_VAULT_PATH to your vault folder
-npm run build
-npm start                          # open http://localhost:8787
+### 1. Install the tools
+
+| Tool | Version | Where to get it | Check with |
+|---|---|---|---|
+| Node.js | 20 or newer | [nodejs.org](https://nodejs.org) | `node --version` |
+| Python | 3.12 or newer | [python.org](https://www.python.org/downloads/): tick **"Add python.exe to PATH"** in the installer | `python --version` |
+| uv | any | `python -m pip install uv` | `python -m uv --version` |
+
+If `python` opens the Microsoft Store, turn off the `python.exe` entries under
+**Settings → Apps → Advanced app settings → App execution aliases**, then open a new terminal.
+
+The backend runs on Python 3.13. uv downloads its own copy for this project, so it doesn't matter
+which Python version you installed.
+
+### 2. Install the app's packages
+
+```powershell
+npm run setup
 ```
 
-Any browser works. When you edit a note in Obsidian, the page updates by itself. If it doesn't (some Google
-Drive for Desktop setups don't report file changes), set `DESKBOARD_WATCH_POLLING=true` in `backend/.env`.
+This installs the frontend packages (npm) and the backend packages (uv, into `backend\.venv`).
+
+### 3. Tell the backend where your vault is
+
+```powershell
+copy backend\.env.example backend\.env
+notepad backend\.env
+```
+
+Set `DESKBOARD_VAULT_PATH` to your Obsidian vault folder and save. Use forward slashes; spaces are fine:
+
+```ini
+DESKBOARD_VAULT_PATH=G:/My Drive/obsidian
+```
+
+## Run
+
+```powershell
+npm run build    # only needed the first time and after you pull new changes
+npm start
+```
+
+Open **http://localhost:8787** in any browser. Leave the terminal open while you use the app, and press
+`Ctrl+C` there to stop it.
+
+When you edit a note in Obsidian, the page updates by itself.
+
+### Troubleshooting
+
+| You see | Do this |
+|---|---|
+| "Can't reach the Deskboard server" | The server isn't running: run `npm start` (or `npm run dev`) and click **TRY AGAIN**. |
+| "Set your vault folder…" | `backend\.env` is missing or has no `DESKBOARD_VAULT_PATH`. Fix it, then restart the server. |
+| "The vault folder … can't be found" | Check the path in `backend\.env`. If the vault is on Google Drive, make sure Google Drive for Desktop is running. |
+| Edits made in Obsidian don't show up | Some Google Drive for Desktop setups don't report file changes. Add `DESKBOARD_WATCH_POLLING=true` to `backend\.env` and restart. |
+| `uv` "is not recognized" | Run uv as `python -m uv …`; the npm scripts already do. |
+| Port 8787 is already in use | Another copy of the server is running. Close that terminal, or stop it from Task Manager (`python.exe`). |
 
 ### How tasks map to the board
 
