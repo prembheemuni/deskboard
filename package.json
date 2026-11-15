@@ -1,40 +1,24 @@
 {
   "name": "deskboard",
   "private": true,
-  "version": "0.1.0",
-  "type": "module",
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
-  "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/utilities": "^3.2.2",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "react-markdown": "^10.1.0",
-    "remark-breaks": "^4.0.0",
-    "remark-gfm": "^4.0.1",
-    "zustand": "^5.1.0"
+    "dev": "concurrently -n api,web -c blue,green \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "cd backend && python -m uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8787",
+    "build": "npm run build -w frontend",
+    "start": "cd backend && python -m uv run uvicorn app.main:app --host 127.0.0.1 --port 8787",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "npm test -w frontend",
+    "test:backend": "cd backend && python -m uv run pytest",
+    "typecheck": "npm run typecheck -w frontend",
+    "gen:api": "cd backend && python -m uv run python -m app.export_openapi .openapi.json && cd .. && openapi-typescript backend/.openapi.json -o frontend/src/api/schema.d.ts --default-non-nullable false",
+    "setup": "npm install && cd backend && python -m uv sync"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.5",
-    "@testing-library/jest-dom": "^7.0.1",
-    "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.10",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@types/wicg-file-system-access": "^2023.10.7",
-    "@vitejs/plugin-react": "^6.3.0",
-    "jsdom": "^31.0.1",
-    "tailwindcss": "^4.3.5",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.8",
-    "vite-plugin-singlefile": "^2.3.4",
-    "vitest": "^5.1.0"
+    "concurrently": "^9.2.1",
+    "openapi-typescript": "^7.10.1"
   }
 }
