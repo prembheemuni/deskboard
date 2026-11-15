@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+/* ---------- Theme ---------- */
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-base: #090d15;
+  --color-deep: #0d1420;
+  --color-panel: #111a28;
+  --color-raised: #18243a;
+  --color-line: #263449;
+  --color-ink: #f5f7fb;
+  --color-soft: #d2dceb;
+  --color-body: #dce4ef;
+  --color-muted: #9aa9bf;
+  --color-faint: #77849a;
+
+  --color-brand: #16865c;
+  --color-brand-deep: #155b43;
+  --color-brand-line: #258c68;
+  --color-brand-tint: #0f1d1a;
+  --color-progress: #20b77a;
+  --color-mint: #6fc7a2;
+  --color-violet: #a08cf0;
+  --color-violet-deep: #3b2d6b;
+
+  --color-warn: #f1d58a;
+  --color-warn-bg: #2a2312;
+  --color-warn-line: #6b5520;
+  --color-due-bg: #3d3412;
+  --color-danger: #f19a9a;
+  --color-danger-ink: #f5b0b0;
+  --color-danger-bg: #4a1f24;
+}
+
+/* Phones held sideways and other short, wide screens */
+@custom-variant short (@media (max-height: 430px) and (orientation: landscape));
+
+/* ---------- Screen-filling text sizes (grow with width AND height) ---------- */
+
+@utility text-clock { font-size: clamp(64px, min(13vw, 25dvh), 280px); }
+@utility text-clock-short { font-size: clamp(52px, min(11vw, 23dvh), 160px); }
+@utility text-clock-portrait { font-size: clamp(55px, min(18vw, 11dvh), 220px); }
+
+@utility text-countdown { font-size: clamp(110px, min(26vw, 100dvh - 360px), 600px); }
+@utility text-countdown-short { font-size: clamp(100px, min(24vw, 100dvh - 215px), 420px); }
+@utility text-countdown-portrait { font-size: clamp(90px, min(34vw, 30dvh), 440px); }
+
+@utility text-timer-btn { font-size: clamp(15px, min(1.9vw, 3.6dvh), 30px); }
+@utility text-timer-btn-portrait { font-size: clamp(15px, min(4vw, 2.4dvh), 30px); }
+@utility text-weekday { font-size: clamp(20px, min(2.8vw, 5dvh), 46px); }
+@utility text-calendar { font-size: clamp(18px, min(2.4vw, 4.4dvh), 38px); }
+@utility text-zone { font-size: clamp(12px, min(1.5vw, 2.8dvh), 22px); }
+@utility text-timer-status { font-size: clamp(14px, min(1.8vw, 3.4dvh), 28px); }
+@utility text-sessions { font-size: clamp(14px, min(1.7vw, 3.2dvh), 26px); }
+
+@utility text-today-date { font-size: clamp(30px, 3vw + 8px, 56px); }
+@utility text-editor { font-size: clamp(22px, 1.3vw + 10px, 34px); }
+@utility text-card { font-size: clamp(17px, 0.8vw + 10px, 24px); }
+@utility text-note { font-size: clamp(38px, 2.4vw + 16px, 52px); }
+@utility text-note-title { font-size: clamp(50px, 4.5vw + 10px, 84px); }
+
+/* Vertical spacing that scales with screen height */
+@utility gap-fluid { gap: clamp(20px, 4vw, 65px); }
+@utility mt-fluid { margin-top: clamp(8px, 2.5dvh, 30px); }
+
+/* ---------- Base ---------- */
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--color-base);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  button {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  button:hover {
+    filter: brightness(1.2);
+  }
+
+  textarea:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--color-brand-line);
+    outline-offset: 1px;
+  }
+}
+
+/* ---------- Rendered Obsidian notes ---------- */
+
+@layer components {
+  .md {
+    max-width: 100%;
+    line-height: 1.6;
+    color: var(--color-body);
+    overflow-wrap: break-word;
+  }
+
+  .md h1, .md h2, .md h3, .md h4 {
+    color: var(--color-ink);
+    margin: 1.4em 0 0.5em;
+    line-height: 1.25;
+    font-weight: 750;
+  }
+  .md h1 { font-size: 1.6em; }
+  .md h2 { font-size: 1.35em; }
+  .md h3 { font-size: 1.15em; }
+
+  .md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: 0.6em 0; }
+  .md ul { list-style: disc; padding-left: 1.2em; }
+  .md ol { list-style: decimal; padding-left: 1.4em; }
+  .md li:has(> input[type="checkbox"]) { list-style: none; margin-left: -1.1em; }
+  .md input[type="checkbox"] {
+    width: 0.7em;
+    height: 0.7em;
+    vertical-align: middle;
+    margin-right: 0.3em;
+    accent-color: var(--color-progress);
+  }
+
+  .md a { color: var(--color-mint); text-decoration: underline; }
+  .md a.wikilink {
+    color: var(--color-violet);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--color-violet);
+    cursor: pointer;
+  }
+  .md a.wikilink.missing { opacity: 0.55; cursor: default; }
+
+  .md code {
+    background: var(--color-raised);
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 0.9em;
+  }
+  .md pre {
+    background: var(--color-deep);
+    border: 1px solid var(--color-line);
+    padding: 14px;
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  .md pre code { background: none; padding: 0; }
+
+  .md blockquote {
+    padding: 4px 16px;
+    border-left: 3px solid var(--color-brand-line);
+    color: var(--color-muted);
+  }
+
+  .md table { border-collapse: collapse; display: block; overflow-x: auto; }
+  .md th, .md td { border: 1px solid var(--color-line); padding: 6px 10px; }
+  .md img { max-width: 100%; }
+  .md hr { border: 0; border-top: 1px solid var(--color-line); margin: 1em 0; }
+}
