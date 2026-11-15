@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeEach, describe, expect, it } from "vitest";
 import { useUI } from "../app/ui";
 import { addDaysKey, dayKey } from "../lib/dates";
-import { asHandle, dir, file, type FakeDir } from "../test/fakeVault";
+import { dir, file, serveVault, type FakeDir } from "../test/fakeVault";
 import { resetVaultForTests, useVault } from "../vault/store";
 import { BoardTab } from "./board/BoardTab";
 import { useBoard } from "./board/store";
@@ -29,7 +29,7 @@ beforeEach(async () => {
   resetTodayForTests();
   useBoard.setState({ status: { text: "" }, alert: null, search: "", showAllDone: false });
   useUI.setState({ notePath: null, sideCollapsed: false, openFolders: ["office"] });
-  useVault.setState({ handle: asHandle(vault) });
+  serveVault(vault);
   await act(() => useVault.getState().refresh());
 });
 

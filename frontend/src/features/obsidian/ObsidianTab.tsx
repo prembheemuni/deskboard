@@ -11,7 +11,7 @@ import { Sidebar } from "./Sidebar";
 
 function NoteView() {
   const notes = useVault((s) => s.notes);
-  const vaultName = useVault((s) => s.handle?.name ?? "");
+  const vaultName = useVault((s) => s.name);
   const notePath = useUI((s) => s.notePath);
   const openNote = useUI((s) => s.openNote);
   const scroller = useRef<HTMLElement>(null);
@@ -68,7 +68,7 @@ export function ObsidianTab() {
   return (
     <VaultGate
       title="Connect your Obsidian vault"
-      description="Pick your vault folder (for example G:\My Drive\obsidian). Nothing is uploaded: notes are read straight from your disk."
+      description="Browse, search and read your notes. They're read from your disk by the Deskboard server running on this computer."
     >
       <div
         className={cx(

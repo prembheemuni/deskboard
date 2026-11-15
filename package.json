@@ -1,18 +1,21 @@
 {
   "name": "deskboard",
   "private": true,
-  "workspaces": ["frontend"],
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm:dev:backend\" \"npm:dev:frontend\"",
     "dev:frontend": "npm run dev -w frontend",
-    "dev:backend": "cd backend && uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8787",
+    "dev:backend": "cd backend && python -m uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8787",
     "build": "npm run build -w frontend",
-    "start": "cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8787",
+    "start": "cd backend && python -m uv run uvicorn app.main:app --host 127.0.0.1 --port 8787",
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "npm test -w frontend",
-    "test:backend": "cd backend && uv run pytest",
+    "test:backend": "cd backend && python -m uv run pytest",
     "typecheck": "npm run typecheck -w frontend",
-    "gen:api": "cd backend && uv run python -m app.export_openapi > ../frontend/src/api/openapi.json && cd .. && openapi-typescript frontend/src/api/openapi.json -o frontend/src/api/schema.d.ts"
+    "gen:api": "cd backend && python -m uv run python -m app.export_openapi .openapi.json && cd .. && openapi-typescript backend/.openapi.json -o frontend/src/api/schema.d.ts --default-non-nullable false",
+    "setup": "npm install && cd backend && python -m uv sync"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

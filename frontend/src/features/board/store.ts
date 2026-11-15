@@ -4,7 +4,7 @@ import { create } from "zustand";
 import type { AlertMessage, StatusMessage } from "../../components/types";
 import { dayKey } from "../../lib/dates";
 import { insertUnderHeading } from "../../lib/text";
-import { FolderMissingError } from "../../vault/fs";
+import { ConflictError, FolderMissingError } from "../../api/client";
 import { useVault } from "../../vault/store";
 import { cleanFolder, dailyPath, useToday } from "../today/store";
 import { STATUS_NAMES, parseTasks, rebuildLine, type TaskStatus } from "./tasks";
@@ -29,33 +29,10 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 
 const setStatus = (text: string, error = false) => useBoard.setState({ status: { text, error } });
 
-async function ensureWrite(): Promise<boolean> {
-  const vault = useVault.getState();
-  if (vault.canWrite || (await vault.checkWrite())) return true;
-  useBoard.setState({
-    alert: {
-      message: "Moving tasks edits your notes, so the page needs permission to edit files in your vault.",
-      actions: [
-        {
-          label: "ALLOW EDITING",
-          run: async () => {
-            if (await useVault.getState().requestWrite()) {
-              useBoard.setState({ alert: null });
-              setStatus("Editing is on. Try again.");
-            }
-          },
-        },
-      ],
-    },
-  });
-  return false;
-}
-
 async function doMove(id: string, status: TaskStatus): Promise<void> {
   // always work from the latest notes (an earlier queued edit may have changed them)
   const task = parseTasks(useVault.getState().notes).find((t) => t.id === id);
   if (!task || task.status === status) return;
-  if (!(await ensureWrite())) return;
 
   setStatus("Saving…");
   try {
@@ -75,15 +52,19 @@ async function doMove(id: string, status: TaskStatus): Promise<void> {
     }
 
     lines[idx] = rebuildLine(task, status, dayKey());
-    await vault.write(task.path, lines.join("\n"), { crlf: disk.crlf });
+    await vault.write(task.path, lines.join("\n"), { crlf: disk.crlf, base: disk });
     setStatus(`Moved to ${STATUS_NAMES[status]} · ${task.noteName}`);
   } catch (e) {
+    if (e instanceof ConflictError) {
+      setStatus("That note changed in Obsidian while saving. Board refreshed, try again.", true);
+      await useVault.getState().refresh();
+      return;
+    }
     setStatus(`Couldn't update the note: ${(e as Error).message}`, true);
   }
 }
 
 async function doAdd(text: string): Promise<boolean> {
-  if (!(await ensureWrite())) return false;
   const key = dayKey();
   const line = `- [ ] ${text}`;
   const today = useToday.getState();
@@ -98,7 +79,7 @@ async function doAdd(text: string): Promise<boolean> {
       const vault = useVault.getState();
       const path = dailyPath(today.folder, key);
       const disk = await vault.read(path);
-      await vault.write(path, insertUnderHeading(disk.text, "## Todo", line), { crlf: disk.crlf });
+      await vault.write(path, insertUnderHeading(disk.text, "## Todo", line), { crlf: disk.crlf, base: disk });
     }
     setStatus("Added to today's note");
     return true;

@@ -4,7 +4,7 @@ import { create } from "zustand";
 import type { AlertMessage, StatusMessage } from "../../components/types";
 import { dateFromOffset, dayKey, formatClockTime } from "../../lib/dates";
 import { KEYS, readString, writeString } from "../../lib/storage";
-import { FolderMissingError } from "../../vault/fs";
+import { ConflictError, FolderMissingError } from "../../api/client";
 import { useVault } from "../../vault/store";
 
 export const DAILY_DEFAULT = "Daily Updates";
@@ -55,7 +55,6 @@ interface TodayState {
   saveNow: (opts?: { overwrite?: boolean; createFolder?: boolean }) => Promise<void>;
   /** Save first if this path is open with unsaved typing (used before another tab edits it) */
   flush: (path: string) => Promise<void>;
-  requestWrite: () => Promise<void>;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -111,8 +110,6 @@ export const useToday = create<TodayState>()((set, get) => ({
       alert: null,
       status: { text: disk.exists ? "Loaded from your vault" : "New note: it's saved once you start typing" },
     });
-
-    if (!(await vault.checkWrite())) askForWrite();
   },
 
   setText(text) {
@@ -135,34 +132,13 @@ export const useToday = create<TodayState>()((set, get) => ({
       return;
     }
 
-    const vault = useVault.getState();
-    if (!vault.canWrite && !(await vault.checkWrite())) {
-      askForWrite();
-      set({ status: { text: "Not saved yet: allow saving first.", error: true } });
-      return;
-    }
-
     set({ saving: true });
     try {
-      if (!overwrite) {
-        // was the note changed in Obsidian since we loaded it?
-        const disk = await vault.read(path);
-        if (disk.exists && disk.text !== base.text && disk.mtime > base.mtime) {
-          set({
-            alert: {
-              message: "This note was changed in Obsidian after you opened it here.",
-              actions: [
-                { label: "USE OBSIDIAN'S VERSION", run: () => { set({ dirty: false }); void get().load(); } },
-                { label: "KEEP MINE", run: () => { set({ alert: null }); void get().saveNow({ overwrite: true }); } },
-              ],
-            },
-            status: { text: "Not saved: see the message above.", error: true },
-          });
-          return;
-        }
-      }
-
-      const mtime = await vault.write(path, text, { createFolder });
+      // unless overwriting, the server refuses the save if the note was changed in Obsidian since we loaded it
+      const mtime = await useVault.getState().write(path, text, {
+        createFolder,
+        base: overwrite ? undefined : { text: base.text, mtime: base.mtime },
+      });
 
       if (get().key === key) {
         const stillSame = get().text === text;
@@ -175,7 +151,18 @@ export const useToday = create<TodayState>()((set, get) => ({
         if (!stillSame) get().setText(get().text);
       }
     } catch (e) {
-      if (e instanceof FolderMissingError) {
+      if (e instanceof ConflictError) {
+        set({
+          alert: {
+            message: "This note was changed in Obsidian after you opened it here.",
+            actions: [
+              { label: "USE OBSIDIAN'S VERSION", run: () => { set({ dirty: false }); void get().load(); } },
+              { label: "KEEP MINE", run: () => { set({ alert: null }); void get().saveNow({ overwrite: true }); } },
+            ],
+          },
+          status: { text: "Not saved: see the message above.", error: true },
+        });
+      } else if (e instanceof FolderMissingError) {
         set({
           alert: {
             message: `The folder “${cleanFolder(folder)}” isn't in your vault. If you moved it, change the folder name in the side panel.`,
@@ -194,27 +181,7 @@ export const useToday = create<TodayState>()((set, get) => ({
   async flush(path) {
     if (get().dirty && get().path() === path) await get().saveNow();
   },
-
-  async requestWrite() {
-    const ok = await useVault.getState().requestWrite();
-    if (ok) {
-      set({ alert: null });
-      if (get().dirty) await get().saveNow();
-      else set({ status: { text: "Saving is on." } });
-    } else {
-      set({ status: { text: "Edit permission wasn't given, so changes aren't saved.", error: true } });
-    }
-  },
 }));
-
-function askForWrite(): void {
-  useToday.setState({
-    alert: {
-      message: "To save into your vault, the page needs permission to edit files there.",
-      actions: [{ label: "ALLOW SAVING", run: () => void useToday.getState().requestWrite() }],
-    },
-  });
-}
 
 // When the open note changes on disk (edited in Obsidian, or by the task board)
 // and there's no unsaved typing here, show the new version.

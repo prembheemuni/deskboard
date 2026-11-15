@@ -93,9 +93,8 @@ function TreeChildren({ node, prefix }: { node: TreeNode; prefix: string }) {
 
 export function Sidebar() {
   const notes = useVault((s) => s.notes);
-  const vaultName = useVault((s) => s.handle?.name ?? "Vault");
+  const vaultName = useVault((s) => s.name || "Vault");
   const refresh = useVault((s) => s.refresh);
-  const pick = useVault((s) => s.pick);
   const { sideCollapsed, toggleSide, setAllFolders } = useUI();
   const [view, setView] = useState<View>("files");
   const [query, setQuery] = useState("");
@@ -167,7 +166,6 @@ export function Sidebar() {
             <div className="min-w-0 flex-1 truncate text-lg font-[750]">📓 {vaultName}</div>
             <div className="flex gap-1.5">
               <Button size="sm" title="Re-read notes from disk" onClick={() => void refresh()}>↻</Button>
-              <Button size="sm" title="Choose a different vault" onClick={() => void pick()}>CHANGE</Button>
             </div>
           </>
         )}

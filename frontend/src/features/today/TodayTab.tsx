@@ -137,7 +137,7 @@ function Header() {
   const folder = useToday((s) => s.folder);
   const offset = useToday((s) => s.offset);
   const go = useToday((s) => s.go);
-  const vaultName = useVault((s) => s.handle?.name ?? "");
+  const vaultName = useVault((s) => s.name);
   if (!key) return null;
   const path = dailyPath(folder, key);
 

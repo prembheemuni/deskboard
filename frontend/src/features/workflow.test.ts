@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { addDaysKey, dayKey } from "../lib/dates";
-import { asHandle, dir, file, type FakeDir } from "../test/fakeVault";
+import { dir, file, serveVault, serverDown, type FakeDir } from "../test/fakeVault";
 import { resetVaultForTests, useVault } from "../vault/store";
 import { useBoard } from "./board/store";
 import { parseTasks } from "./board/tasks";
@@ -16,7 +16,7 @@ async function connect(v: FakeDir) {
   resetVaultForTests();
   resetTodayForTests();
   useBoard.setState({ status: { text: "" }, alert: null });
-  useVault.setState({ handle: asHandle(v) });
+  serveVault(v);
   await useVault.getState().refresh();
 }
 
@@ -40,6 +40,30 @@ describe("vault", () => {
     expect(paths).toEqual([`Daily Updates/${yesterday}.md`, `Daily Updates/${today}.md`, "office/Known issues.md"]);
     expect(useVault.getState().notes[0].text).not.toContain("\r");
     expect(useVault.getState().status).toBe("ready");
+    expect(useVault.getState().name).toBe("obsidian");
+  });
+
+  it("follows changes made in Obsidian", async () => {
+    vault.file("office/Known issues.md")!.text = "- [ ] edited elsewhere";
+    vault.file("office/Known issues.md")!.mtime += 10_000;
+    (vault.children.office as FakeDir).children["New.md"] = file("New.md", "new note");
+    delete (vault.children["Daily Updates"] as FakeDir).children[`${yesterday}.md`];
+
+    await useVault.getState().applyChanges([
+      { kind: "changed", path: "office/Known issues.md" },
+      { kind: "changed", path: "office/New.md" },
+      { kind: "deleted", path: `Daily Updates/${yesterday}.md` },
+    ]);
+
+    const notes = useVault.getState().notes;
+    expect(notes.map((n) => n.path)).toEqual([`Daily Updates/${today}.md`, "office/Known issues.md", "office/New.md"]);
+    expect(notes[1].text).toBe("- [ ] edited elsewhere");
+  });
+
+  it("says so when the server isn't running", async () => {
+    serverDown();
+    await useVault.getState().refresh();
+    expect(useVault.getState().status).toBe("offline");
   });
 });
 
