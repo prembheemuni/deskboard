@@ -10,6 +10,7 @@
     "dev:backend": "cd backend && python -m uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8787",
     "build": "npm run build -w frontend",
     "start": "cd backend && python -m uv run uvicorn app.main:app --host 127.0.0.1 --port 8787",
+    "kill-ports": "node scripts/kill-ports.mjs",
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "npm test -w frontend",
     "test:backend": "cd backend && python -m uv run pytest",
