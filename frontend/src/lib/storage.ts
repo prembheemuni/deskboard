@@ -6,6 +6,9 @@ export const KEYS = {
   dailyFolder: "deskDailyFolder",
   openFolders: "deskVaultOpenFolders",
   sideCollapsed: "deskVaultSideCollapsed",
+  saverMode: "deskSaverMode",
+  routinePath: "deskRoutinePath",
+  textSize: "deskTextSize",
 } as const;
 
 export function readString(key: string, fallback: string): string {

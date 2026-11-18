@@ -45,7 +45,7 @@ function NoteLink({ note, sub }: { note: Note; sub?: string }) {
       title={note.path}
       onClick={() => openNote(note.path)}
       className={cx(
-        "my-px block w-full truncate rounded-[7px] px-2 py-[5px] text-left text-[17px] font-medium",
+        "my-px block w-full truncate rounded-[7px] px-2 py-[5px] text-left text-list font-medium",
         active ? "bg-brand-deep text-white" : "bg-transparent text-soft",
       )}
     >
@@ -193,7 +193,7 @@ export function Sidebar() {
               </Button>
             ))}
           </div>
-          <nav className="min-h-0 flex-1 overflow-y-auto text-[17px]">{body}</nav>
+          <nav className="min-h-0 flex-1 overflow-y-auto text-list">{body}</nav>
         </>
       )}
     </aside>
