@@ -23,6 +23,7 @@ const SNIPPETS: { id: string; label: string; text: () => string; inline?: boolea
   { id: "todo", label: "+ TODO", text: () => "## Todo\n- [ ] " },
   { id: "task", label: "+ TASK", text: () => "- [ ] " },
   { id: "note", label: "+ NOTE", text: () => "Note:\n" },
+  { id: "thoughts", label: "+ THOUGHTS", text: () => "## Thoughts\n- " },
   { id: "time", label: "+ TIME", text: () => `**${formatClockTime()}** `, inline: true },
 ];
 
@@ -218,7 +219,7 @@ function RecentDays({ dailyNotes }: { dailyNotes: Note[] }) {
             key={n.path}
             type="button"
             onClick={() => void go(offsetOf(n.name))}
-            className={`block w-full truncate rounded-[7px] px-2 py-[5px] text-left text-[17px] font-medium ${
+            className={`block w-full truncate rounded-[7px] px-2 py-[5px] text-left text-list font-medium ${
               n.name === key ? "bg-brand-deep text-white" : "bg-transparent text-soft"
             }`}
           >

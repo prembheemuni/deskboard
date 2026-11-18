@@ -7,6 +7,7 @@ Run it on your computer, point it at your vault folder, and you get:
 - **Timer** – a large Pomodoro clock that's easy to read from across the room
 - **Today** – write today's daily note; it saves straight into your vault
 - **Tasks** – a To do / Doing / Done board of the `- [ ]` tasks in your daily notes
+- **Habits** – tick off your daily routine (read from a note in your vault) and see the last 30 days
 - **Obsidian** – browse, search and read your notes
 
 It has two parts: a **frontend** (React, in your browser) and a small **backend** (FastAPI) that reads and
@@ -73,7 +74,7 @@ When you edit a note in Obsidian, the page updates by itself.
 | "The vault folder … can't be found" | Check the path in `backend\.env`. If the vault is on Google Drive, make sure Google Drive for Desktop is running. |
 | Edits made in Obsidian don't show up | Some Google Drive for Desktop setups don't report file changes. Add `DESKBOARD_WATCH_POLLING=true` to `backend\.env` and restart. |
 | `uv` "is not recognized" | Run uv as `python -m uv …`; the npm scripts already do. |
-| Port 8787 is already in use | Another copy of the server is running. Close that terminal, or stop it from Task Manager (`python.exe`). |
+| Port 8787 is already in use, or the page shows the wrong vault | An old copy of the server is still running. Run `npm run kill-ports` (stops everything on 8787 and 5173), then start again. |
 
 ### How tasks map to the board
 
@@ -91,6 +92,28 @@ line in the note. Tasks in `Templates` folders, cancelled `[-]` tasks and tasks 
 Daily notes are `<folder>/YYYY-MM-DD.md` (default folder: `Daily Updates`, changeable in the Today tab).
 The page never re-creates a missing folder silently, and it won't overwrite a note you edited in Obsidian
 without asking.
+
+### Habits
+
+The checklist comes from a routine note: by default a note called **Daily Routine** anywhere in the vault
+(pick another with the 📄 button in the tab). Each top-level `- [ ]` line is a habit, the heading above it
+groups it, and indented lines under it show as its notes. Plain bullets and text are ignored, and ticking
+never changes this note: **✎ EDIT ROUTINE** edits it.
+
+```markdown
+# 🌅 Every Morning
+- [ ] **Read The Rundown AI** *(5 min)*
+  - Daily summary of the biggest AI news
+```
+
+Ticks are saved in `Habit Log.md` next to the routine note, one line per day (newest first), so the
+history stays in your vault:
+
+```markdown
+- 2026-11-17: Read The Rundown AI (5 min); Check X (2 min)
+```
+
+The log refers to habits by name, so renaming a habit in the routine starts its history afresh.
 
 ## Development
 

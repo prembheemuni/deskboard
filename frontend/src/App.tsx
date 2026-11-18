@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { TABS, useUI, type TabId } from "./app/ui";
 import { BoardTab } from "./features/board/BoardTab";
+import { HabitsTab } from "./features/habits/HabitsTab";
 import { ObsidianTab } from "./features/obsidian/ObsidianTab";
+import { ScreensaverTab } from "./features/screensaver/ScreensaverTab";
 import { TimerTab } from "./features/timer/TimerTab";
 import { TodayTab } from "./features/today/TodayTab";
 import { cx } from "./lib/cx";
@@ -11,10 +13,42 @@ const PANELS: Record<TabId, () => React.JSX.Element> = {
   timerTab: TimerTab,
   todayTab: TodayTab,
   boardTab: BoardTab,
+  habitTab: HabitsTab,
   vaultTab: ObsidianTab,
+  saverTab: ScreensaverTab,
 };
 
 const REFRESH_THROTTLE = 5000;
+
+const CORNER_BTN = "rounded-[10px] bg-brand px-[19px] py-3 text-sm font-bold text-white opacity-85 max-sm:px-3 max-sm:py-2";
+
+function TextSizeButton() {
+  const textSize = useUI((s) => s.textSize);
+  const toggle = useUI((s) => s.toggleTextSize);
+  const compact = textSize === "compact";
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={compact}
+      title={compact ? "Switch to large text (phone)" : "Switch to compact text (laptop)"}
+      className={CORNER_BTN}
+    >
+      {compact ? "A+" : "A−"}
+      <span className="max-sm:hidden"> {compact ? "LARGE" : "COMPACT"}</span>
+    </button>
+  );
+}
+
+function useIsFullscreen(): boolean {
+  const [full, setFull] = useState(() => !!document.fullscreenElement);
+  useEffect(() => {
+    const onChange = () => setFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  return full;
+}
 
 function FullscreenButton() {
   const toggle = async () => {
@@ -30,7 +64,7 @@ function FullscreenButton() {
       type="button"
       onClick={() => void toggle()}
       title="Full screen"
-      className="fixed top-[calc(15px+env(safe-area-inset-top,0px))] right-[15px] z-[100] rounded-[10px] bg-brand px-[19px] py-3 text-sm font-bold text-white opacity-85 max-sm:top-[calc(9px+env(safe-area-inset-top,0px))] max-sm:px-3 max-sm:py-2 [:fullscreen_&]:hidden"
+      className={cx(CORNER_BTN, "[:fullscreen_&]:hidden")}
     >
       ⛶<span className="max-sm:hidden"> EXPAND</span>
     </button>
@@ -41,6 +75,8 @@ export function App() {
   const tab = useUI((s) => s.tab);
   const setTab = useUI((s) => s.setTab);
   const init = useVault((s) => s.init);
+  // Screensaver in expand mode: hide the tabs and corner buttons so it fills the screen (Esc brings them back)
+  const immersive = useIsFullscreen() && tab === "saverTab";
 
   useEffect(() => {
     void init();
@@ -63,7 +99,8 @@ export function App() {
     <>
       <nav
         role="tablist"
-        className="flex h-[58px] items-center gap-2 overflow-x-auto border-b border-line pr-[150px] pl-[clamp(15px,3vw,40px)] [scrollbar-width:none] max-sm:pr-16 short:h-[46px]"
+        hidden={immersive}
+        className="flex h-[58px] items-center gap-2 overflow-x-auto border-b border-line pr-[290px] pl-[clamp(15px,3vw,40px)] [scrollbar-width:none] max-sm:pr-32 short:h-[46px]"
       >
         {TABS.map((t) => (
           <button
@@ -90,14 +127,20 @@ export function App() {
             key={t.id}
             role="tabpanel"
             hidden={tab !== t.id}
-            className="h-[calc(100dvh-58px)] w-full overflow-y-auto short:h-[calc(100dvh-46px)]"
+            className={cx(
+              "w-full overflow-y-auto",
+              immersive ? "h-dvh" : "h-[calc(100dvh-58px)] short:h-[calc(100dvh-46px)]",
+            )}
           >
             <Panel />
           </main>
         );
       })}
 
-      <FullscreenButton />
+      <div hidden={immersive} className="fixed top-[calc(15px+env(safe-area-inset-top,0px))] right-[15px] z-[100] flex gap-2 max-sm:top-[calc(9px+env(safe-area-inset-top,0px))]">
+        <TextSizeButton />
+        <FullscreenButton />
+      </div>
     </>
   );
 }

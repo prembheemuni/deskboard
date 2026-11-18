@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { create } from "zustand";
 import { KEYS, readString, writeString } from "../../lib/storage";
 
 export type TimerMode = "focus" | "short" | "long";
@@ -37,92 +37,122 @@ function beep(): void {
   }
 }
 
-/** Pomodoro timer. Uses an end timestamp so it stays accurate when the tab is in the background. */
-export function useTimer() {
-  const [mode, setModeState] = useState<TimerMode>("focus");
-  const [remaining, setRemaining] = useState(DURATIONS.focus);
-  const [running, setRunning] = useState(false);
-  const [sessions, setSessions] = useState(() => Number(readString(KEYS.sessions, "0")) || 0);
-  const [soundOn, setSoundOn] = useState(false);
-  const endAt = useRef<number | null>(null);
-  const soundRef = useRef(soundOn);
-  soundRef.current = soundOn;
+interface TimerState {
+  mode: TimerMode;
+  remaining: number;
+  running: boolean;
+  sessions: number;
+  soundOn: boolean;
+  /** Timestamp the current run ends at; null while paused. Keeps it accurate in background tabs. */
+  endAt: number | null;
+  startPause: () => void;
+  setMode: (mode: TimerMode) => void;
+  reset: () => void;
+  skip: () => void;
+  toggleSound: () => void;
+}
 
-  const complete = useCallback((finished: TimerMode) => {
-    setRunning(false);
-    endAt.current = null;
-    setRemaining(0);
-    if (finished === "focus") {
-      setSessions((s) => {
-        writeString(KEYS.sessions, String(s + 1));
-        return s + 1;
-      });
-    }
-    if (soundRef.current) beep();
+let ticker: ReturnType<typeof setInterval> | undefined;
+
+function stopTicker(): void {
+  clearInterval(ticker);
+  ticker = undefined;
+}
+
+/**
+ * Pomodoro timer state, shared app-wide (the Timer tab drives it, the Screensaver shows it).
+ * Uses an end timestamp so it stays accurate when the tab is in the background.
+ */
+export const useTimerStore = create<TimerState>()((set, get) => {
+  const complete = () => {
+    stopTicker();
+    const { mode, sessions, soundOn } = get();
+    const next = mode === "focus" ? sessions + 1 : sessions;
+    if (mode === "focus") writeString(KEYS.sessions, String(next));
+    set({ running: false, endAt: null, remaining: 0, sessions: next });
+    if (soundOn) beep();
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("Pomodoro complete", { body: `${MODE_LABELS[finished]} finished.` });
+      new Notification("Pomodoro complete", { body: `${MODE_LABELS[mode]} finished.` });
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    if (!running) return;
-    const id = setInterval(() => {
-      if (endAt.current === null) return;
-      const left = Math.max(0, Math.ceil((endAt.current - Date.now()) / 1000));
-      if (left === 0) complete(mode);
-      else setRemaining(left);
-    }, 250);
-    return () => clearInterval(id);
-  }, [running, mode, complete]);
+  const tick = () => {
+    const { endAt } = get();
+    if (endAt === null) return;
+    const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+    if (left === 0) complete();
+    else set({ remaining: left });
+  };
 
-  const startPause = useCallback(() => {
-    if (running) {
-      if (endAt.current !== null) setRemaining(Math.max(0, Math.ceil((endAt.current - Date.now()) / 1000)));
-      endAt.current = null;
-      setRunning(false);
-      return;
-    }
-    if (remaining === 0) return;
-    endAt.current = Date.now() + remaining * 1000;
-    setRunning(true);
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission().catch(() => undefined);
-    }
-  }, [running, remaining]);
+  const setMode = (mode: TimerMode) => {
+    stopTicker();
+    set({ mode, running: false, endAt: null, remaining: DURATIONS[mode] });
+  };
 
-  const setMode = useCallback((next: TimerMode) => {
-    endAt.current = null;
-    setRunning(false);
-    setModeState(next);
-    setRemaining(DURATIONS[next]);
-  }, []);
+  return {
+    mode: "focus",
+    remaining: DURATIONS.focus,
+    running: false,
+    sessions: Number(readString(KEYS.sessions, "0")) || 0,
+    soundOn: false,
+    endAt: null,
 
-  const reset = useCallback(() => {
-    endAt.current = null;
-    setRunning(false);
-    setRemaining(DURATIONS[mode]);
-  }, [mode]);
+    startPause() {
+      const { running, endAt, remaining } = get();
+      if (running) {
+        stopTicker();
+        const left = endAt === null ? remaining : Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+        set({ running: false, endAt: null, remaining: left });
+        return;
+      }
+      if (remaining === 0) return;
+      set({ running: true, endAt: Date.now() + remaining * 1000 });
+      stopTicker();
+      ticker = setInterval(tick, 250);
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => undefined);
+      }
+    },
 
-  const skip = useCallback(() => {
-    if (mode === "focus") setMode(sessions > 0 && sessions % 4 === 0 ? "long" : "short");
-    else setMode("focus");
-  }, [mode, sessions, setMode]);
+    setMode,
 
-  const toggleSound = useCallback(() => {
-    setSoundOn((on) => {
-      if (!on) void getAudio()?.resume();
-      return !on;
-    });
-  }, []);
+    reset() {
+      setMode(get().mode);
+    },
 
-  const progress = Math.max(0, Math.min(100, ((DURATIONS[mode] - remaining) / DURATIONS[mode]) * 100));
-  const status = running
-    ? `${MODE_LABELS[mode]} IN PROGRESS`
-    : remaining === 0
+    skip() {
+      const { mode, sessions } = get();
+      if (mode === "focus") setMode(sessions > 0 && sessions % 4 === 0 ? "long" : "short");
+      else setMode("focus");
+    },
+
+    toggleSound() {
+      const on = !get().soundOn;
+      if (on) void getAudio()?.resume();
+      set({ soundOn: on });
+    },
+  };
+});
+
+export const timerProgress = (mode: TimerMode, remaining: number): number =>
+  Math.max(0, Math.min(100, ((DURATIONS[mode] - remaining) / DURATIONS[mode]) * 100));
+
+/** Timer state plus derived progress/status, for the Timer tab. */
+export function useTimer() {
+  const s = useTimerStore();
+  const progress = timerProgress(s.mode, s.remaining);
+  const status = s.running
+    ? `${MODE_LABELS[s.mode]} IN PROGRESS`
+    : s.remaining === 0
       ? "SESSION COMPLETE"
-      : `READY TO ${mode.toUpperCase()}`;
+      : `READY TO ${s.mode.toUpperCase()}`;
+  return { ...s, progress, status };
+}
 
-  return { mode, remaining, running, sessions, soundOn, progress, status, startPause, setMode, reset, skip, toggleSound };
+/** Resets the shared timer between tests. */
+export function resetTimerForTests(): void {
+  stopTicker();
+  useTimerStore.setState({ mode: "focus", remaining: DURATIONS.focus, running: false, endAt: null, soundOn: false });
 }
 
 export const formatCountdown = (seconds: number): string =>
